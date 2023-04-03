@@ -1,0 +1,247 @@
+---
+title: "Project1_Shengnan_Li"
+author: "Shengnan LI"
+date: "10/4/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(spData)
+library(gganimate)
+library(dplyr)
+library(ggplot2)
+library(rnaturalearth)
+library(png)
+library(gifski)
+
+```
+
+```{r}
+col_names <- c(
+  'SID',
+  'SEASON',
+  'NUMBER',
+  'BASIN',
+  'SUBBASIN',
+  'NAME',
+  'ISO_TIME',
+  'NATURE',
+  'LAT',
+  'LON',
+  'WMO_WIND',
+  'WMO_PRES',
+  'WMO_AGENCY',
+  'TRACK_TYPE',
+  'DIST2LAND',
+  'LANDFALL'
+)
+```
+
+```{r}
+col_types <- c(
+  'character',
+  'integer',
+  'integer',
+  'character',
+  'character',
+  'character',
+  'character',
+  'character',
+  'real',
+  'real',
+  'integer',
+  'integer',
+  'character',
+  'character',
+  'integer',
+  'integer'
+)
+```
+
+```{r}
+url <- "ibtracs.NA.list.v04r00.csv"
+Hurricanes <- read.csv(url, 
+sep = ",",
+colClasses = c(col_types, rep("NULL", 147)),
+stringsAsFactors = FALSE,
+skip = 77876, 
+na.strings = "NA"
+)
+```
+
+
+```{r}
+colnames(Hurricanes) <- col_names
+```
+
+```{r}
+Hurricanes$ISO_TIME = as.POSIXct(Hurricanes$ISO_TIME)
+Hurricanes$MONTH <- lubridate::month(Hurricanes$ISO_TIME)
+```
+
+```{r}
+str(Hurricanes, vec.len = 1)
+```
+
+C) Main Analysis 
+
+C.1) Are hurricanes becoming more frequent?
+In the analyzed period (from 1970 to 2019), are hurricanes becoming more frequent (year
+over year generally speaking)?
+Come up with both numeric and visual outputs to answer this research question, and include
+a description/interpretation of such outputs.
+
+
+```{r}                      
+hurricanes_1970_2019_T <- filter(Hurricanes, SEASON %in% 1970:2019)
+hurricanes_1970_2019 <- count(hurricanes_1970_2019_T,SID, SEASON)
+unique_hurricanes_1970_2019 <- unique(select(hurricanes_1970_2019, SID, SEASON))
+
+hurricanes_1970_2019_1 <- count(unique_hurricanes_1970_2019, SEASON)
+hurricanes_1970_2019_1
+ggplot(unique_hurricanes_1970_2019, aes(x = SEASON))+
+  geom_bar() 
+```
+
+C.2) Are hurricanes getting stronger?
+In the analyzed period (from 1970 to 2019), are hurricanes getting stronger (year over year
+generally speaking)?
+Come up with both numeric and visual outputs to answer this research question, and include
+a description/interpretation of such outputs.
+
+```{r}
+year_max_wind <- 
+  summarise(group_by(hurricanes_1970_2019_T, SEASON),
+ max_wind = max(WMO_WIND,na.rm = TRUE)
+)
+ggplot(data = year_max_wind, aes(x = SEASON, y = max_wind)) +
+  
+  geom_line() +
+  geom_smooth(method = 'lm')
+
+```
+
+C.3) 2019 Atlantic Hurricane Season
+You will also have to investigate the following claims:
+a) The 2019 atlantic hurricane season had 20 tropical cyclones, of which 18 were named
+storms.
+
+```{r}
+# TRUE, the 2019 Atlantic hurricane season had 20 tropical cyclones, of which 18 were named.
+
+Hurricanes_2019 <- filter(Hurricanes, SEASON == 2019)
+
+distinct(Hurricanes_2019, SID)
+distinct(Hurricanes_2019, WMO_WIND > 34)
+
+
+Hurricanes_2019_wind_b <- filter(Hurricanes_2019, WMO_WIND >34)
+unique_Hurricanes_2019_1 <- unique(select(Hurricanes_2019_wind_b, SID))
+unique_Hurricanes_2019_1
+
+
+
+
+```
+
+b) The 2019 atlantic hurricane season had six named storms that achieved hurricane
+status.
+
+```{r}
+# False, the 2019 Atlantic hurricane season had seven named storms that achieved hurricane status.
+Hurricanes_2019_wind_b <- filter(Hurricanes_2019 , WMO_WIND >=64)
+uniqueb <- unique(select(Hurricanes_2019_wind_b, NAME))
+uniqueb
+
+distinct(Hurricanes_2019, WMO_WIND >= 64)
+```
+
+c) The 2019 atlantic hurricane season had three named storms that intensified into major
+hurricanes, all of which became Category 5 hurricanes.
+
+```{r}
+# False, the 2019 Altlantic hurricane season had three named storms that intensified into majoy hurricanes, only two of which became Category 5 hurricanes.
+Hurricanes_c1 <- filter(Hurricanes_2019 , WMO_WIND >= 96)
+Hurricanes_c2 <- filter(Hurricanes_2019 , WMO_WIND >= 137)
+
+uniquec1 <- unique(select(Hurricanes_c1, NAME))
+uniquec2 <- unique(select(Hurricanes_c2, NAME))
+
+uniquec1
+uniquec2
+
+distinct(Hurricanes_2019, WMO_WIND >= 96)
+distinct(Hurricanes_2019, WMO_WIND >= 137)
+```
+
+d) There was one storm in 2019 that formed outside the official hurricane season (recall
+that the official season goes from June 1 to November 30).
+
+```{r}
+#Yes, there was one storm in 2019 that formed outside the official hurricane season, and the name of this storm is Andrea.
+Hurricanes_2019$ISO_TIME = as.POSIXct(Hurricanes_2019$ISO_TIME)
+Hurricanes_2019$MONTH <- lubridate::month(Hurricanes_2019$ISO_TIME)
+
+Hurricanes_2019_d <- filter(Hurricanes_2019, SEASON == 2019 ,  !MONTH %in% 6:11)
+uniqued <- unique(select(Hurricanes_2019_d, NAME))
+
+uniqued
+
+distinct(Hurricanes_2019,  !MONTH %in% 6:11)
+```
+
+e) Two storms became Category 5 hurricanes, at least one storm making landfall at
+Category 5 intensity.
+
+```{r}
+#FALSE, it doesn't exist one storm makeing landfall at Categort 5 intensity.
+distinct(Hurricanes_2019, WMO_WIND >137)
+distinct(Hurricanes_2019,LANDFALL == '0'& WMO_WIND >= 137)
+
+```
+
+C.4) Animated Map
+Make an animated map of storms in 2019, to display their paths (or trajectories). And don’t
+forget to provide a sound description and interpretation for this visual display.
+To do this, you will have to plot the locations of the storms with their longitude and latitude
+on a map. Start by making a static (i.e. non-animated) map following one of the approaches
+described in Prof. Sanchez’s book
+http://www.gastonsanchez.com/intro2cwd/eda-maps.html
+To learn how to animate static ggplots, take a look at the tutorial Getting Started with the
+package "gganimate" by Thomas Lin Pederson and David Robison:
+https://gganimate.com/articles/gganimate.html
+You can see an example of various animated graphics in An Intro to Animating Charts with
+"gganimate" by Joe Drigo Enriquez.
+https://rpubs.com/jedoenriquez/animatingchartsintro
+Look at example 2 Australia vs New Zealand: life expectancy and GDP per capita especially
+the section titled Animate the scatterplot, in which Joe Drigo uses the time variable
+year and the function transition_time() to make the year-based animated transitions.
+
+
+
+
+```{r}
+C4data <- filter(Hurricanes, SEASON == 2019&WMO_WIND >=34)
+world_map <- map_data("world")
+gg_world <- ggplot() + 
+  geom_polygon(data = world_map, 
+               aes(x = long, y = lat, group = group), 
+               fill = "gray95", colour = "gray70", size = 0.5) +
+  theme_bw()
+world <- gg_world + 
+  geom_point(data = C4data, 
+             aes(x = LON, y = LAT, color = NAME, size = WMO_WIND),   alpha = 0.5) + 
+   xlim(c(-110, 0)) + 
+  ylim(c(0, 60)) 
+ gif <- world + transition_time(ISO_TIME)+
+ labs(title = '{frame_time}')
+animate(gif,fps = 5)
+```
+
+
